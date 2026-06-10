@@ -1,4 +1,3 @@
-```python
 import os
 import requests
 import pandas as pd
@@ -735,4 +734,3 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-```
