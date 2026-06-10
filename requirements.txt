@@ -7,3 +7,5 @@ plotly
 sqlparse
 requests
 python-multipart
+openai
+python-dotenv

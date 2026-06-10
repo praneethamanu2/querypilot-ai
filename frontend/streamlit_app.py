@@ -23,7 +23,7 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Make Streamlit top toolbar blend with selected theme */
+    /* Streamlit top toolbar */
     header[data-testid="stHeader"] {
         background-color: var(--background-color) !important;
         color: var(--text-color) !important;
@@ -44,7 +44,7 @@ st.markdown(
         background-color: transparent !important;
     }
 
-    /* Main app background follows Streamlit theme */
+    /* Main app */
     .stApp {
         background-color: var(--background-color);
         color: var(--text-color);
@@ -94,6 +94,17 @@ st.markdown(
         margin-top: 12px;
     }
 
+    /* Warning box */
+    .warning-box {
+        background-color: rgba(245, 158, 11, 0.12);
+        padding: 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        border-left: 6px solid #f59e0b;
+        color: var(--text-color);
+        margin-top: 12px;
+    }
+
     /* Helper text */
     .small-text {
         color: var(--text-color);
@@ -126,6 +137,11 @@ st.markdown(
         background-color: var(--secondary-background-color) !important;
         color: var(--text-color) !important;
         border-color: rgba(148, 163, 184, 0.45) !important;
+    }
+
+    /* Radio buttons */
+    div[data-testid="stRadio"] label {
+        color: var(--text-color) !important;
     }
 
     /* Button */
@@ -218,12 +234,12 @@ st.markdown(
 # Header
 # -----------------------------
 st.markdown(
-    "<div class='main-title'>QueryPilot AI</div>",
+    "<div class='main-title'>🚀 QueryPilot AI</div>",
     unsafe_allow_html=True
 )
 
 st.markdown(
-    "<div class='subtitle'>Safe Text-to-SQL Analytics Assistant</div>",
+    "<div class='subtitle'>Safe Text-to-SQL Analytics Assistant for Business Teams</div>",
     unsafe_allow_html=True
 )
 
@@ -231,8 +247,8 @@ st.markdown(
     """
     <div class='info-box'>
     <b>What this app does:</b><br>
-    QueryPilot AI lets users ask business questions in plain English, safely converts them into SQL,
-    validates the query, runs it on the database, and returns tables, charts, and business insights.
+    QueryPilot AI lets users ask business questions in plain English, converts them into SQL,
+    validates the query for safety, runs it on the database, and returns tables, charts, and business insights.
     </div>
     """,
     unsafe_allow_html=True
@@ -250,7 +266,8 @@ with st.sidebar:
         QueryPilot AI demonstrates:
 
         - Natural language analytics
-        - SQL generation
+        - Text-to-SQL generation
+        - LLM-powered SQL generation
         - SQL safety validation
         - Query execution
         - Dashboarding
@@ -270,7 +287,9 @@ with st.sidebar:
         "Who are the top 10 customers?",
         "What is return rate by category?",
         "What is average order value by region?",
-        "Show discount analysis by region."
+        "Show discount analysis by region.",
+        "Which product category generated the highest revenue?",
+        "Which region has the highest average order value?"
     ]
 
     selected_example = st.selectbox(
@@ -310,6 +329,37 @@ question = st.text_area(
     height=120,
     placeholder="Example: What is revenue by region?"
 )
+
+
+generation_mode = st.radio(
+    "Choose SQL Generation Mode",
+    ["Rule-based", "LLM-powered"],
+    horizontal=True
+)
+
+mode_value = "llm" if generation_mode == "LLM-powered" else "rule"
+
+
+if generation_mode == "Rule-based":
+    st.markdown(
+        """
+        <div class='success-box'>
+        ✅ Rule-based mode works without an API key. It uses predefined intent detection and SQL templates.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown(
+        """
+        <div class='warning-box'>
+        ⚠️ LLM-powered mode requires an OpenAI API key in your <b>.env</b> file.
+        The generated SQL will still be checked by the safety validator before execution.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 col_button, col_hint = st.columns([1, 3])
 
@@ -396,7 +446,10 @@ if analyze_button:
             with st.spinner("Generating SQL, validating safety, running query, and preparing insights..."):
                 response = requests.post(
                     f"{API_BASE_URL}/ask",
-                    json={"question": question}
+                    json={
+                        "question": question,
+                        "mode": mode_value
+                    }
                 )
 
             if response.status_code == 200:
@@ -405,24 +458,32 @@ if analyze_button:
 
                 st.divider()
 
+                # -----------------------------
                 # Summary Metrics
+                # -----------------------------
                 st.subheader("Analysis Summary")
 
-                metric_col1, metric_col2, metric_col3 = st.columns(3)
+                metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
 
                 with metric_col1:
+                    st.metric(
+                        label="Generation Mode",
+                        value=generation_mode
+                    )
+
+                with metric_col2:
                     st.metric(
                         label="Detected Intent",
                         value=result["intent"].replace("_", " ").title()
                     )
 
-                with metric_col2:
+                with metric_col3:
                     st.metric(
                         label="Rows Returned",
                         value=result["row_count"]
                     )
 
-                with metric_col3:
+                with metric_col4:
                     st.metric(
                         label="Recommended Chart",
                         value=result["chart_type"].title()
@@ -439,11 +500,15 @@ if analyze_button:
 
                 st.divider()
 
+                # -----------------------------
                 # Business Insight
+                # -----------------------------
                 st.subheader("Business Insight")
                 st.info(result["insight"])
 
+                # -----------------------------
                 # Output Tabs
+                # -----------------------------
                 tab1, tab2, tab3, tab4, tab5 = st.tabs(
                     [
                         "📊 Visualization",
@@ -488,6 +553,11 @@ if analyze_button:
                     for check in result["quality_checks"]:
                         st.write(f"- {check}")
 
+                    st.write("**Why this matters:**")
+                    st.write(
+                        "The SQL safety layer prevents unsafe database operations and makes the analytics workflow more reliable."
+                    )
+
                 with tab5:
                     try:
                         history_response = requests.get(f"{API_BASE_URL}/history")
@@ -526,7 +596,7 @@ st.divider()
 st.markdown(
     """
     <p class='small-text'>
-    QueryPilot AI was built with Python, FastAPI, Streamlit, SQLite, Pandas, Plotly, and SQL validation logic.
+    QueryPilot AI was built with Python, FastAPI, Streamlit, SQLite, Pandas, Plotly, SQL validation logic, and optional LLM-powered SQL generation.
     </p>
     """,
     unsafe_allow_html=True

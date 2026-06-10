@@ -4,6 +4,10 @@ import pandas as pd
 def generate_business_insight(dataframe: pd.DataFrame, intent: str) -> str:
     """
     Generates a simple business insight from query results.
+
+    Works for both:
+    1. Rule-based queries
+    2. LLM-generated queries
     """
 
     if dataframe.empty:
@@ -54,7 +58,21 @@ def generate_business_insight(dataframe: pd.DataFrame, intent: str) -> str:
             f"at {top_discount['average_discount_percent']}%."
         )
 
-    return "The query was executed successfully. Review the table and chart for business insights."
+    # Generic insight for LLM-generated queries
+    if len(dataframe.columns) >= 2:
+        first_col = dataframe.columns[0]
+        second_col = dataframe.columns[1]
+
+        try:
+            top_row = dataframe.iloc[0]
+            return (
+                f"The top result is {top_row[first_col]} with "
+                f"{second_col.replace('_', ' ')} of {top_row[second_col]}."
+            )
+        except Exception:
+            return "The query was executed successfully. Review the table and chart for insights."
+
+    return "The query was executed successfully. Review the table output for business insights."
 
 
 def run_result_quality_checks(dataframe: pd.DataFrame) -> list:
